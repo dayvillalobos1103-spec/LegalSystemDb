@@ -199,12 +199,7 @@ app.UseMiddleware<LegalSystem.Api.Middleware.ExceptionMiddleware>();
 
 // 5. Mapeo de controladores y ejecución
 app.MapControllers();
-if (app.Environment.IsDevelopment())
-{
-    app.Run();
-}
-else
-{
+
     var apiPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     app.Run($"http://0.0.0.0:{apiPort}");
-}
+
