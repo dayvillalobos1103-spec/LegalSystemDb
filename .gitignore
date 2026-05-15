@@ -1,0 +1,16 @@
+# Archivos de compilación
+bin/
+obj/
+
+# Configuración del IDE
+.vs/
+.vscode/
+
+# Archivos de entorno 
+.env
+appsettings.*.json
+*.pfx
+*.pem
+
+# Archivos de log
+*.log
