@@ -1,31 +1,27 @@
-# 1. ETAPA DE CONSTRUCCIÓN (BUILD)
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copiamos la solución
-COPY ["LegalSystem.Solution.sln", "./"]
+# 1. Copiamos ABSOLUTAMENTE TODO para no fallar con las rutas
+COPY . .
 
-# Copiamos los proyectos con tus nombres REALES (con el .API)
-COPY ["LegalSystem.API/LegalSystem.API.csproj", "LegalSystem.API/"]
-COPY ["LegalSystem.Application/LegalSystem.Application.csproj", "LegalSystem.Application/"]
-COPY ["LegalSystem.Domain/LegalSystem.Domain.csproj", "LegalSystem.Domain/"]
-COPY ["LegalSystem.Infraestructura/LegalSystem.Infraestructura.csproj", "LegalSystem.Infraestructura/"]
-
-# Restaurar
+# 2. Restauramos usando el archivo de solución (que está en la raíz)
 RUN dotnet restore "LegalSystem.Solution.sln"
 
-# Copiar todo y publicar
-COPY . .
-WORKDIR "/src/LegalSystem.API"
-RUN dotnet publish "LegalSystem.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+# 3. Publicamos usando un comodín (**) para que encuentre el proyecto
+# Esto busca el archivo .csproj sin importar en qué carpeta esté
+RUN dotnet publish "**/LegalSystem.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
+# --- RUNTIME ---
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
+# Librerías para PostgreSQL
 RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 
+# Copiamos lo que se publicó
 COPY --from=build /app/publish .
 
+# Configuración de Render
 ENV ASPNETCORE_URLS=http://+:${PORT}
 EXPOSE 8080
 
