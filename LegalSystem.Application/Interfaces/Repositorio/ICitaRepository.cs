@@ -1,18 +1,16 @@
-﻿using LegalSystem.Domain;
+using LegalSystem.Domain;
 
 namespace LegalSystem.Application.Interfaces.Repositorio
 {
     public interface ICitaRepository
     {
         // Paginación y Listado
-        Task<IEnumerable<Cita>> GetAllPagedAsync(int pagina, int tamano);
+        Task<IEnumerable<Cita>> GetAllPagedAsync(int pagina, int tamano, string? usuarioId = null);
+        Task<int> CountAsync(string? usuarioId = null);
 
-        // Búsqueda paginada 
-        Task<IEnumerable<Cita>> SearchPagedAsync(string valor, int pagina, int tamano);
-
-        // Contadores
-        Task<int> CountAsync();
-        Task<int> CountSearchAsync(string valor);
+        // Contadores y Búsqueda
+        Task<int> CountSearchAsync(string valor, string? usuarioId = null);
+        Task<IEnumerable<Cita>> SearchPagedAsync(string valor, int pagina, int tamano, string? usuarioId = null);
 
         // CRUD Básico
         Task<Cita?> GetByIdAsync(int id);
@@ -22,5 +20,6 @@ namespace LegalSystem.Application.Interfaces.Repositorio
 
         // Método especializado para ver detalles (Cita + Cliente + Caso)
         Task<Cita?> GetByIdWithDetailsAsync(int id);
+        
     }
 }

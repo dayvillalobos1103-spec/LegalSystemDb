@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -35,7 +35,7 @@ namespace LegalSystem.Api.Middleware
 
             // Por defecto, asumimos que es un error interno del servidor (500)
             var statusCode = HttpStatusCode.InternalServerError;
-            var message = "Ocurrió un error inesperado en el servidor.";
+            var message = $"Ocurrió un error inesperado: {exception.Message} {(exception.InnerException != null ? exception.InnerException.Message : "")}";
 
             // Evaluamos el tipo de excepción que lanzamos en nuestros servicios
             switch (exception)

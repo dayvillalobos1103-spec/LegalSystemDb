@@ -3,6 +3,7 @@ using LegalSystem.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using LegalSystem.Application.Interfaces.Dbcontex;
+using LegalSystem.Domain.Entities;
 namespace LegalSystem.Infraestructura.Data
 {
     public class ApplicationDbContext : IdentityDbContext<Usuario>, IApplicationDbContext
@@ -18,6 +19,7 @@ namespace LegalSystem.Infraestructura.Data
         public DbSet<Clientes> Clientes { get; set; } = null!;
         public DbSet<CasoJuridico> CasosJuridicos { get; set; } = null!;
         public DbSet<Cita> Citas { get; set; } = null!;
+        public DbSet<Documento> Documentos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

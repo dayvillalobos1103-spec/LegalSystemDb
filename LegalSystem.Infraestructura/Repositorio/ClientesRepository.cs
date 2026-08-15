@@ -1,4 +1,4 @@
-﻿using LegalSystem.Application.Interfaces.Repositorio;
+using LegalSystem.Application.Interfaces.Repositorio;
 using LegalSystem.Domain;
 using LegalSystem.Infraestructura.Data;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +15,36 @@ namespace LegalSystem.Infraestructura.Repositorio
         }
 
         // Paginación: Skip salta las páginas anteriores, Take trae solo la cantidad necesaria
-        public async Task<IEnumerable<Clientes>> GetAllPagedAsync(int pagina, int tamano)
+        public async Task<IEnumerable<Clientes>> GetAllPagedAsync(int pagina, int tamano, string? usuarioId = null)
         {
-            return await _context.Clientes
+            var query = _context.Clientes
+                .Include(c => c.Usuario)
+                .Include(c => c.CasosJuridicos) 
+                .Include(c => c.Citas)          
+                .AsNoTracking();
+
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query
                 .Skip((pagina - 1) * tamano)
                 .Take(tamano)
                 .ToListAsync();
         }
 
+        public async Task<int> CountAsync(string? usuarioId = null)
+        {
+            var query = _context.Clientes.AsQueryable();
+
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query.CountAsync();
+        }
         // Búsqueda paginada (ej. buscar por nombre)
         public async Task<IEnumerable<Clientes>> SearchPagedAsync(string valor, int pagina, int tamano)
         {
@@ -67,10 +89,16 @@ namespace LegalSystem.Infraestructura.Repositorio
                 await _context.SaveChangesAsync();
             }
         }
-        public async Task<IEnumerable<Clientes>> GetAllAsync()
+        public async Task<IEnumerable<Clientes>> GetAllAsync(string? usuarioId = null)
         {
-            // Esto es lo que va a la base de datos por todos los registros
-            return await _context.Clientes.ToListAsync();
+            var query = _context.Clientes.AsQueryable();
+
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query.ToListAsync();
         }
 
     }

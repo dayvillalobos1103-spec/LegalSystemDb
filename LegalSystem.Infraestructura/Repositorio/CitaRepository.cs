@@ -1,4 +1,4 @@
-﻿using LegalSystem.Application.Interfaces.Repositorio;
+using LegalSystem.Application.Interfaces.Repositorio;
 using LegalSystem.Domain;
 using LegalSystem.Infraestructura.Data;
 using Microsoft.EntityFrameworkCore;
@@ -15,34 +15,47 @@ namespace LegalSystem.Infraestructura.Repositorio
         }
 
         public async Task<IEnumerable<Cita>> GetAllPagedAsync(int pagina, int tamano)
-
         {
             return await _context.Citas
-            .Include(c => c.Cliente)        // <--- Carga el Cliente
-            .Include(c => c.CasosJuridico)  // <--- Carga el Caso
-            .Include(c => c.Cliente)        
-            .Include(c => c.CasosJuridico)  
-            .Skip((pagina - 1) * tamano)
-            .Take(tamano)
-            .ToListAsync();
-            
-
-        }
-
-
-        public async Task<IEnumerable<Cita>> SearchPagedAsync(string valor, int pagina, int tamano)
-        {
-            return await _context.Citas
-                .Where(c => c.Motivo.Contains(valor)) 
+                .Include(c => c.Cliente)        // Carga el Cliente una sola vez
+                .Include(c => c.CasosJuridico)  // Carga el Caso una sola vez
+                .Include(c => c.Usuario)        // Carga al Abogado/Usuario (para que no salga null)
+                .AsNoTracking()                 // EVITA LOS DUPLICADOS EN MEMORIA Y MEJORA RENDIMIENTO
                 .Skip((pagina - 1) * tamano)
                 .Take(tamano)
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Cita>> SearchPagedAsync(string valor, int pagina, int tamano, string? usuarioId = null)
+        {
+            var query = _context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.CasosJuridico)
+                .Include(c => c.Usuario)
+                .AsNoTracking();
+                
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query
+                .Where(c => c.Motivo.Contains(valor))
+                .Skip((pagina - 1) * tamano)
+                .Take(tamano)
+                .ToListAsync();
+        }
         public async Task<int> CountAsync() => await _context.Citas.CountAsync();
 
-        public async Task<int> CountSearchAsync(string valor) =>
-            await _context.Citas.Where(c => c.Motivo.Contains(valor)).CountAsync();
+        public async Task<int> CountSearchAsync(string valor, string? usuarioId = null)
+        {
+            var query = _context.Citas.AsQueryable();
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+            return await query.Where(c => c.Motivo.Contains(valor)).CountAsync();
+        }
 
         public async Task<Cita?> GetByIdAsync(int id) => await _context.Citas.FindAsync(id);
 
@@ -75,5 +88,38 @@ namespace LegalSystem.Infraestructura.Repositorio
                 await _context.SaveChangesAsync();
             }
         }
+
+
+
+        public async Task<IEnumerable<Cita>> GetAllPagedAsync(int pagina, int tamano, string? usuarioId = null)
+        {
+            var query = _context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.CasosJuridico)
+                .Include(c => c.Usuario)
+                .AsNoTracking();
+
+            // Si viene un ID de abogado, filtramos la tabla
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query.Skip((pagina - 1) * tamano).Take(tamano).ToListAsync();
+        }
+
+        public async Task<int> CountAsync(string? usuarioId = null)
+        {
+            var query = _context.Citas.AsQueryable();
+            
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+            return await query.CountAsync();
+        }
+
+      
     }
+
 }

@@ -1,4 +1,4 @@
-﻿using LegalSystem.Application.DTOs.Cliente;
+using LegalSystem.Application.DTOs.Cliente;
 using LegalSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

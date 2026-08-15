@@ -1,10 +1,7 @@
-﻿namespace LegalSystem.Application.DTOs.Cliente
+namespace LegalSystem.Application.DTOs.Cliente
 {
     public class ActualizarClienteDtos
     {
-        
-        public int Clienteid { get; set; }
-
         public string Nombre { get; set; } = null!;
 
         public string Email { get; set; } = null!;

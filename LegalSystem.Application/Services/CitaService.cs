@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AutoMapper;
 using LegalSystem.Application.DTOs.Cita;
 using LegalSystem.Application.Interfaces;
@@ -29,25 +29,27 @@ namespace LegalSystem.Application.Services
         // 1. Obtener todas las citas paginadas
         public async Task<RespuestaPaginada<CitaDtos>> GetAllPagedAsync(int pagina, int tamano)
         {
-            var total = await _citaRepo.CountAsync();
-            var items = await _citaRepo.GetAllPagedAsync(pagina, tamano);
+            // 1. Identificamos quién es el usuario actual usando su Token
+            var user = _httpContextAccessor.HttpContext?.User;
+            string? usuarioIdFiltro = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // 4. Enviamos el filtro al repositorio
+            var total = await _citaRepo.CountAsync(usuarioIdFiltro);
+            var items = await _citaRepo.GetAllPagedAsync(pagina, tamano, usuarioIdFiltro);
+
             var dtos = _mapper.Map<IEnumerable<CitaDtos>>(items);
 
             return new RespuestaPaginada<CitaDtos>(dtos, total, pagina, tamano);
-
         }
 
-        // 2. Buscar citas paginadas
+        // 2. Buscar citas paginadas (Este lo dejas tal cual lo tienes en tu imagen, está perfecto)
         public async Task<RespuestaPaginada<CitaDtos>> SearchPagedAsync(string valor, int pagina, int tamano)
         {
             var total = await _citaRepo.CountSearchAsync(valor);
             var items = await _citaRepo.SearchPagedAsync(valor, pagina, tamano);
             var dtos = _mapper.Map<IEnumerable<CitaDtos>>(items);
-
             return new RespuestaPaginada<CitaDtos>(dtos, total, pagina, tamano);
-
         }
-
 
         // 3. Obtener cita por ID
         public async Task<CitaDtos?> GetByIdAsync(int id)
@@ -62,7 +64,8 @@ namespace LegalSystem.Application.Services
         public async Task<bool> AddAsync(CrearCitaDtos dto)
         {
             // 1. Buscamos al abogado logueado
-            var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = _httpContextAccessor.HttpContext?.User;
+            var userId = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
             {

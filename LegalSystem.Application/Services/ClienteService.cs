@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using LegalSystem.Application.DTOs.Cliente;
 using LegalSystem.Application.Interfaces;
 using LegalSystem.Application.Interfaces.Repositorio;
@@ -26,18 +26,36 @@ namespace LegalSystem.Application.Services
         }
         public async Task<IEnumerable<ClienteDtos>> GetAllAsync()
         {
-            var clientes = await _clienteRepo.GetAllAsync();
+            var user = _httpContextAccessor.HttpContext?.User;
+            string? usuarioIdFiltro = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var clientes = await _clienteRepo.GetAllAsync(usuarioIdFiltro);
             return _mapper.Map<IEnumerable<ClienteDtos>>(clientes);
         }
         // 1. Paginación y Listado
         public async Task<RespuestaPaginada<ClienteDtos>> GetAllPagedAsync(int pagina, int tamano)
         {
-            var total = await _clienteRepo.CountAsync();
-            var items = await _clienteRepo.GetAllPagedAsync(pagina, tamano);
+            var user = _httpContextAccessor.HttpContext?.User;
+            string? usuarioIdFiltro = null;
+                
+            usuarioIdFiltro = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(usuarioIdFiltro))
+            {
+                throw new UnauthorizedAccessException("BLOQUEO DE SEGURIDAD: No se pudo identificar tu ID en el Token. Vuelve a iniciar sesión.");
+            }
+
+
+
+            var total = await _clienteRepo.CountAsync(usuarioIdFiltro);
+            var items = await _clienteRepo.GetAllPagedAsync(pagina, tamano, usuarioIdFiltro);
+
+            
             var dtos = _mapper.Map<IEnumerable<ClienteDtos>>(items);
 
             return new RespuestaPaginada<ClienteDtos>(dtos, total, pagina, tamano);
         }
+        
 
         // 2. Búsqueda con paginación
         public async Task<RespuestaPaginada<ClienteDtos>> SearchPagedAsync(string valor, int pagina, int tamano)
@@ -65,11 +83,12 @@ namespace LegalSystem.Application.Services
         public async Task<bool> AddAsync(CrearClienteDtos dto)
         {
             // 1. Obtener el ID del abogado del token
-            var userId = _httpContextAccessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var user = _httpContextAccessor.HttpContext?.User;
+            var userId = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
             {
-                throw new Exception("Error: No se pudo identificar al abogado. ¿Iniciaste sesión?");
+                throw new Exception("Error: No se pudo identificar al usuario. ¿Iniciaste sesión?");
             }
 
             // 2. Mapear y asignar (SOLO UNA VEZ)
@@ -88,7 +107,8 @@ namespace LegalSystem.Application.Services
             if (clienteExistente == null) return false;
 
             // 2. Extraemos el ID del abogado del Token (Seguridad)
-            var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = _httpContextAccessor.HttpContext?.User;
+            var userId = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (clienteExistente.UsuarioId != userId) return false;
 

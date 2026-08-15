@@ -1,7 +1,7 @@
-using System.Text;
-using LegalSystem.Application.Interfaces;
+ï»¿using LegalSystem.Application.Interfaces;
 using LegalSystem.Application.Interfaces.Dbcontex;
 using LegalSystem.Application.Interfaces.Repositorio;
+using LegalSystem.Application.Interfaces.Services;
 using LegalSystem.Application.Mapping;
 using LegalSystem.Application.Services;
 using LegalSystem.Domain;
@@ -12,9 +12,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
+using System.Text;
 
-
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
+
 // cargar variables de entorno
 DotNetEnv.Env.Load();
 builder.Configuration.AddEnvironmentVariables();
@@ -44,7 +47,7 @@ options.UseNpgsql(connectionString));
 
 builder.Services.AddIdentity<Usuario, IdentityRole>(options =>
 {
-    // Configuraciones de contraseñas sencillas
+    // Configuraciones de contraseÃ±as sencillas
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
     options.Password.RequireNonAlphanumeric = false;
@@ -66,6 +69,9 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<ICasoService, CasoService>();
 builder.Services.AddScoped<ICitaService, CitaService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IDocumentoRepository, DocumentosRepository>();
+builder.Services.AddScoped<IDocumentoService, DocumentoService>();
 //registar el  contextAcseso
 builder.Services.AddHttpContextAccessor();
 
@@ -79,8 +85,9 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
-// CONFIGURACIÓN DE JWT 
-var key = Encoding.UTF8.GetBytes("EstaEsMiLlaveSuperSecretaYMuyLarga123456789");
+// CONFIGURACIÃ“N DE JWT 
+var jwtKey = builder.Configuration["JWT_KEY"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "EstaEsMiLlaveSuperSecretaYMuyLarga123456789";
+var key = Encoding.UTF8.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(config =>
 {
@@ -95,7 +102,8 @@ builder.Services.AddAuthentication(config =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateAudience = false,
+        RoleClaimType = ClaimTypes.Role
     };
     config.Events = new JwtBearerEvents
     {
@@ -104,8 +112,9 @@ builder.Services.AddAuthentication(config =>
             context.HandleResponse();
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
-            var mensaje = new { error = "Acceso denegado. Debe iniciar sesión como abogado para realizar esta acción." };
+            var mensaje = new { error = "Acceso denegado. No tiene los permisos o el rol necesario para realizar esta acciÃ³n." };
             return context.Response.WriteAsJsonAsync(mensaje);
+
         }
     };
 });
@@ -116,7 +125,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "LegalSystem API", Version = "v1" });
 
-    // Configuración del esquema de seguridad
+    // ConfiguraciÃ³n del esquema de seguridad
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -124,7 +133,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",             
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Simplemente pega tu token JWT aquí (sin la palabra Bearer)."
+        Description = "Simplemente pega tu token JWT aquÃ­ (sin la palabra Bearer)."
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -143,7 +152,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// 1. Configuración de CORS
+// 1. ConfiguraciÃ³n de CORS
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? Array.Empty<string>();
@@ -161,8 +170,8 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // En producción (Render), puedes usar las URLs configuradas o permitir todo
-            // solo si es necesario para pruebas rápidas:
+            // En producciÃ³n (Render), puedes usar las URLs configuradas o permitir todo
+            // solo si es necesario para pruebas rÃ¡pidas:
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
@@ -170,17 +179,17 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 1. Construir la aplicación
+// 1. Construir la aplicaciÃ³n
 var app = builder.Build();
 
-// 2. Swagger siempre va primero para que esté disponible
+// 2. Swagger siempre va primero para que estÃ© disponible
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "LegalSystem API v1");
 });
 
-// 3. Redirección a Swagger
+// 3. RedirecciÃ³n a Swagger
 app.MapGet("/", context =>
 {
     context.Response.Redirect("/swagger/index.html");
@@ -197,9 +206,15 @@ app.UseAuthorization();
 // 4. Middlewares de manejo de errores
 app.UseMiddleware<LegalSystem.Api.Middleware.ExceptionMiddleware>();
 
-// 5. Mapeo de controladores y ejecución
+// 5. Mapeo de controladores y ejecuciÃ³n
 app.MapControllers();
-
+if (app.Environment.IsDevelopment())
+{
+    app.Run();
+}
+else
+{
     var apiPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     app.Run($"http://0.0.0.0:{apiPort}");
 
+}

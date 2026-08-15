@@ -1,4 +1,4 @@
-﻿using LegalSystem.Application.Interfaces.Repositorio;
+using LegalSystem.Application.Interfaces.Repositorio;
 using LegalSystem.Domain;
 using LegalSystem.Infraestructura.Data;
 using Microsoft.EntityFrameworkCore;
@@ -13,26 +13,55 @@ namespace LegalSystem.Infraestructura.Repositorio
         {
             _context = context;
         }
-        public async Task<IEnumerable<CasoJuridico>> GetAllAsync()
+        public async Task<IEnumerable<CasoJuridico>> GetAllAsync(string? usuarioId = null)
         {
-            // Esto trae todos los casos de la tabla CasosJuridicos incluyendo al Cliente
-            return await _context.CasosJuridicos
-                .Include(c => c.Cliente)
-                .ToListAsync();
+            var query = _context.CasosJuridicos.Include(c => c.Cliente).AsQueryable();
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+            return await query.ToListAsync();
         }
 
-        public async Task<IEnumerable<CasoJuridico>> GetAllPagedAsync(int pagina, int tamano)
+        public async Task<IEnumerable<CasoJuridico>> GetAllPagedAsync(int pagina, int tamano, string? usuarioId = null)
         {
-            return await _context.CasosJuridicos
+            // Preparamos la consulta incluyendo las tablas relacionadas
+            var query = _context.CasosJuridicos
+                .Include(c => c.Cliente)
+                .Include(c => c.Usuario)
+                .AsNoTracking();
+
+            // Si se pasa un ID de abogado, filtramos la consulta
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query
                 .Skip((pagina - 1) * tamano)
                 .Take(tamano)
                 .ToListAsync();
         }
 
+        public async Task<int> CountAsync(string? usuarioId = null)
+        {
+            var query = _context.CasosJuridicos.AsQueryable();
+
+            if (!string.IsNullOrEmpty(usuarioId))
+            {
+                query = query.Where(c => c.UsuarioId == usuarioId);
+            }
+
+            return await query.CountAsync();
+        }
+
         public async Task<IEnumerable<CasoJuridico>> SearchPagedAsync(string valor, int pagina, int tamano)
         {
             return await _context.CasosJuridicos
-                .Where(c => c.TituloCaso.Contains(valor)) 
+                .Include(c => c.Cliente)
+                .Include(c => c.Usuario)
+                .Where(c => c.TituloCaso.Contains(valor))
+                .AsNoTracking()
                 .Skip((pagina - 1) * tamano)
                 .Take(tamano)
                 .ToListAsync();

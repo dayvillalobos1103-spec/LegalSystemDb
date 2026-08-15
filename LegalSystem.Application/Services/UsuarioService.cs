@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using AutoMapper;
 using LegalSystem.Application.DTOs.Usuario;
@@ -8,10 +8,8 @@ using LegalSystem.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
-
-
-
+using System;
+using System.Collections.Generic;
 
 namespace LegalSystem.Application.Services
 {
@@ -28,8 +26,6 @@ namespace LegalSystem.Application.Services
             _signInManager = signInManager;
             _mapper = mapper;
             _context = context;
-
-
         }
 
         // Registro con validaciones para el Middleware
@@ -40,8 +36,6 @@ namespace LegalSystem.Application.Services
             {
                 Nombre = dto.Nombre,
                 Email = dto.Email,
-
-                
                 UserName = dto.Email
             };
 
@@ -57,33 +51,35 @@ namespace LegalSystem.Application.Services
             return true;
         }
 
-
-        //  Login
+        //  Login y Roles
 
         public async Task<string?> LoginAsync(string email, string password)
         {
-           
             var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
 
             if (usuario == null) return null;
 
-            // 2. Verificamos si la contraseña coincide con el Hash de la base de datos
+            // 2. Verificamos si la contraseña coincide en la base de datos
             var resultado = await _signInManager.CheckPasswordSignInAsync(usuario, password, false);
 
             if (!resultado.Succeeded) return null;
 
             // 3. Si la contraseña es correcta, generamos los Claims
-            var claims = new[]
+         
+            var claims = new List<System.Security.Claims.Claim>
             {
-             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, usuario.Nombre!),
-             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, usuario.Email!),
-             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, usuario.Id)
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, usuario.Nombre!),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, usuario.Email!),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, usuario.Id)
             };
+
+            // No roles
 
             // 4. Configuración de seguridad del Token
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("EstaEsMiLlaveSuperSecretaYMuyLarga123456789"));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+            //  parámetros de configuración y el return
             var token = new JwtSecurityToken(
                 issuer: "LegalSystem.API",
                 audience: "LegalSystem.UI",
@@ -92,8 +88,45 @@ namespace LegalSystem.Application.Services
                 signingCredentials: creds
             );
 
-            // 5. Devolvemos el token escrito como string
+            // 5. Devolvemos el token escrito como string 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+
+        public async Task<bool> EliminarUsuarioAsync(string email)
+        {
+            // 1. Buscamos al usuario por su correo
+            var usuario = await _userManager.FindByEmailAsync(email);
+
+            // Si no existe, retornamos falso
+            if (usuario == null) return false;
+
+            // 2. Eliminamos al usuario usando Identity
+            var resultado = await _userManager.DeleteAsync(usuario);
+            return resultado.Succeeded;
+        }
+
+        public async Task<bool> ActualizarUsuarioAsync(string email, string nuevoNombre)
+        {
+            // 1. Buscamos al usuario
+            var usuario = await _userManager.FindByEmailAsync(email);
+
+            // Si no existe, retornamos falso
+            if (usuario == null) return false;
+
+            // 2. Actualizamos la propiedad del nombre
+            usuario.Nombre = nuevoNombre;
+
+            // 3. Guardamos los cambios en la base de datos
+            var resultado = await _userManager.UpdateAsync(usuario);
+            return resultado.Succeeded;
+        }
+
+        public async Task<int> ObtenerTotalUsuariosRegistradosAsync()
+        {
+            // Cuenta cuántos usuarios hay en total en la tabla Usuarios usando tu DbContext
+            return await _context.Usuarios.CountAsync();
+        }
+        
     }
 }

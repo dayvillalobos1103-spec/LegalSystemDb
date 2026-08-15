@@ -10,5 +10,10 @@ namespace LegalSystem.Application.Interfaces
 
         // Para validar el acceso al sistema
         Task<string?> LoginAsync(string email, string password);
+
+        Task<bool> EliminarUsuarioAsync(string email);
+        Task<bool> ActualizarUsuarioAsync(string email, string nuevoNombre);
+        Task<int> ObtenerTotalUsuariosRegistradosAsync();
+      
     }
 }

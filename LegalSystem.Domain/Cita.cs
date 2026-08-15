@@ -1,4 +1,4 @@
-﻿
+
 
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,8 +16,8 @@ namespace LegalSystem.Domain
         public int ClienteId { get; set; }
         public virtual Clientes Cliente { get; set; } = null!;
 
-        public int Casoid { get; set; }
-        public virtual CasoJuridico CasosJuridico { get; set; } = null!;
+        public int? Casoid { get; set; }
+        public virtual CasoJuridico? CasosJuridico { get; set; }
 
         // El cambio clave: UsuarioId en lugar de idusuario
         public string UsuarioId { get; set; } = null!;

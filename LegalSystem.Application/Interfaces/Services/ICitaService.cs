@@ -13,6 +13,8 @@ namespace LegalSystem.Application.Interfaces
         // 2. Búsqueda con paginación ( buscar citas por motivo o cliente)
         Task<RespuestaPaginada<CitaDtos>> SearchPagedAsync(string valor, int pagina, int tamano);
 
+
+
         // 3. CRUD 
         Task<CitaDtos?> GetByIdAsync(int id); 
         Task<bool> AddAsync(CrearCitaDtos dto);

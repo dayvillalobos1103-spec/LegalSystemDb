@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LegalSystem.Application.Interfaces;
 using LegalSystem.Application.DTOs.CasoJuridico;
-using LegalSystem.Application.DTOs.Casoluridico.LegalSystem.Application.DTOs.Casojuridico;
 using LegalSystem.API.Request;
 namespace LegalSystem.API.Controllers
 {
@@ -55,12 +54,12 @@ namespace LegalSystem.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(int id, [FromBody] ActualizarCasoDtos dto)
         {
-            if (dto == null || id != dto.Casoid)
+            if (dto == null)
             {
                 return BadRequest("Los datos del caso son inconsistentes.");
             }
 
-            var success = await _casoService.UpdateAsync(dto);
+            var success = await _casoService.UpdateAsync(id, dto);
 
             if (success)
             {

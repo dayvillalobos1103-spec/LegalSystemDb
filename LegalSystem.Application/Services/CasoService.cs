@@ -1,7 +1,6 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AutoMapper;
 using LegalSystem.Application.DTOs.CasoJuridico;
-using LegalSystem.Application.DTOs.Casoluridico;
 using LegalSystem.Application.Interfaces;
 using LegalSystem.Application.Interfaces.Repositorio; 
 using LegalSystem.Application.Response;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LegalSystem.Application.DTOs.Casoluridico.LegalSystem.Application.DTOs.Casojuridico;
 
 
 namespace LegalSystem.Application.Services
@@ -37,13 +35,18 @@ namespace LegalSystem.Application.Services
         // 1. Obtener todos los casos paginados
         public async Task<RespuestaPaginada<CasoDtos>> GetAllPagedAsync(int pagina, int tamano)
         {
-            var total = await _casoRepo.CountAsync();
-            var items = await _casoRepo.GetAllPagedAsync(pagina, tamano);
+            // 1. Extraemos el usuario logueado desde el Token
+            var user = _httpContextAccessor.HttpContext?.User;
+            string? usuarioIdFiltro = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // 4. Enviamos el filtro al repositorio
+            var total = await _casoRepo.CountAsync(usuarioIdFiltro);
+            var items = await _casoRepo.GetAllPagedAsync(pagina, tamano, usuarioIdFiltro);
+
             var dtos = _mapper.Map<IEnumerable<CasoDtos>>(items);
 
             return new RespuestaPaginada<CasoDtos>(dtos, total, pagina, tamano);
         }
-
         // 2. Buscar casos paginados
         public async Task<RespuestaPaginada<CasoDtos>> SearchPagedAsync(string valor, int pagina, int tamano)
         {
@@ -77,7 +80,8 @@ namespace LegalSystem.Application.Services
                 throw new ArgumentException("El título del caso es obligatorio.", nameof(dto.Titulo));
             }
 
-            var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = _httpContextAccessor.HttpContext?.User;
+            var userId = user?.FindFirstValue("id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
             {
@@ -94,21 +98,21 @@ namespace LegalSystem.Application.Services
 
 
         // 5. Actualizar los datos de un caso
-        public async Task<bool> UpdateAsync(ActualizarCasoDtos dto)
+        public async Task<bool> UpdateAsync(int id, ActualizarCasoDtos dto)
         {
-            // 1. Validamos que el ID del caso sea mayor a cero
-            if (dto.Casoid <= 0)
+            
+            if (id <= 0)
             {
-                throw new ArgumentException("El ID del caso debe ser mayor que cero.", nameof(dto.Casoid));
+                throw new ArgumentException("El ID del caso debe ser mayor que cero.", nameof(id));
             }
 
-            // 2. Buscamos el caso existente en la base de datos
-            var casoExistente = await _casoRepo.GetByIdAsync(dto.Casoid);
+          
+            var casoExistente = await _casoRepo.GetByIdAsync(id);
 
-            // 3. Validamos si realmente existe en el sistema
+         
             if (casoExistente == null)
             {
-                throw new InvalidOperationException($"No se puede actualizar porque el caso con ID {dto.Casoid} no existe.");
+                throw new InvalidOperationException($"No se puede actualizar porque el caso con ID {id} no existe.");
             }
 
             // 4. Mapeamos y actualizamos
